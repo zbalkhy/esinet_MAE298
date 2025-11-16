@@ -273,6 +273,7 @@ class Net:
             return self, history
         else:
             return self
+        
     @staticmethod
     def generate_batches(x, y, batch_size, revert_order=True):
             n_batches = int(len(x) / batch_size)
@@ -314,7 +315,6 @@ class Net:
                 y_pad = [y_pad[i] for i in new_order]
                 for x_padlet, y_padlet in zip(x_pad, y_pad):
                     yield (x_padlet, y_padlet)
-
 
     def prep_data(self, args):
         ''' Train the neural network using training data (eeg) and labels (sources).
@@ -721,7 +721,6 @@ class Net:
         mean_squared_errors = np.mean((y_hat - y)**2, axis=1)
         return mean_squared_errors
 
-
     def evaluate_nmse(self, *args):
         ''' Evaluate the model regarding normalized mean squared error
         
@@ -798,7 +797,6 @@ class Net:
 
         if self.verbose:
             self.model.summary()
-    
     
     def _build_temporal_model(self):
         ''' Build the temporal artificial neural network model using LSTM layers.
@@ -939,7 +937,6 @@ class Net:
         if self.l1_reg is not None:
             self.model.add_loss(self.l1_reg * self.l1_sparsity(out))
         
-
     @staticmethod
     def l1_sparsity(x):
         new_x = tf.math.l2_normalize(x)
@@ -1277,8 +1274,7 @@ class CovNet:
 
         
         return x_hat        
-        
-        
+             
     def fit(self, sim, patience=7, validation_split=0.05, epochs=300, return_history=True):
         callbacks = [tf.keras.callbacks.EarlyStopping(patience=patience, restore_best_weights=True),]
         
@@ -1296,6 +1292,7 @@ class CovNet:
         if return_history:
             return self, history
         return self
+    
     def prep_y(self, y):
         n_samples = len(y)
         y_scaled = []
@@ -1308,7 +1305,6 @@ class CovNet:
             y_sample = (y_sample>thr).astype(float)
             y_scaled.append(y_sample)
         return y_scaled
-
 
     def prep_x(self, x):
         n_samples = len(x)
@@ -1323,7 +1319,6 @@ class CovNet:
             C_scaled.append(C)
         return C_scaled
             
-
     def build_model(self,):
         n_channels, n_dipoles = self.leadfield.shape
 

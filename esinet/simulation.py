@@ -596,9 +596,7 @@ class Simulation:
         # Rescale
         # result /= scaler
         return result
-
-
-    
+ 
     def add_noise(self, x, snr, beta=0):
         """ Add noise of given SNR to signal x.
         Parameters:
@@ -662,12 +660,10 @@ class Simulation:
         
         self.neighbors = self.calculate_neighbors()
         
-
     def calculate_neighbors(self):
         adj = mne.spatial_src_adjacency(self.fwd["src"], verbose=0).toarray().astype(int)
         neighbors = np.array([np.where(a)[0] for a in adj], dtype=object)
         return neighbors
-
                
     @staticmethod
     def get_pulse(pulse_len):
@@ -860,7 +856,6 @@ class Simulation:
         self.eeg_data = eeg_data
 
         return self
-
 
     def select(self, samples):
         ''' Select subset of samples.

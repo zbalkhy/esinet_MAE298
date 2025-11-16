@@ -3,12 +3,11 @@ import torch.nn.functional as F
 from torch import flatten
 
 class ConvDipNet(nn.Module):
-    def __init__(self, in_channels, height, width, n_filters, 
+    def __init__(self, in_channels, im_shape, n_filters, 
                  kernel_size, activation=F.relu, 
                  stride=1, fc_size=512, output_size=5124):
         super().__init__()
-        self.height = height
-        self.width = width
+        self.height, self.width = im_shape
         self.in_channels = in_channels
         self.n_filters = n_filters
         self.kernel_size = kernel_size
