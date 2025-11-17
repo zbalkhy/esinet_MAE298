@@ -86,7 +86,7 @@ def interpolate_eeg(x_scaled, im_shape, info):
         list_of_time_slices = []
         for time_slice in sample:
             time_slice_interp = interpolator.set_values(time_slice)()[::-1]
-            time_slice_interp = time_slice_interp[:, :, np.newaxis]
+            time_slice_interp = time_slice_interp[np.newaxis, :, :]# (1, height, width)
             list_of_time_slices.append(time_slice_interp)
         x_scaled_interp[i] = np.stack(list_of_time_slices, axis=0)
         x_scaled_interp[i][np.isnan(x_scaled_interp[i])] = 0
