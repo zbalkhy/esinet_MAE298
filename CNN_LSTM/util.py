@@ -1,7 +1,7 @@
 from copy import deepcopy
 import numpy as np
 import torch
-
+from tqdm import tqdm
 from mne.channels.layout import _find_topomap_coords
 from mne.viz.topomap import (_setup_interp, _make_head_outlines, _check_sphere, 
     _check_extrapolate)
@@ -10,7 +10,7 @@ def robust_minmax_scaler(eeg: np.ndarray) -> np.ndarray:
     lower, upper = [torch.quantile(eeg, 25), torch.quantile(eeg, 75)]
     return (eeg-lower) / (upper-lower)
 
-def scale_eeg(eeg: torch.Tensor, scale_individually: bool=True) -> torch.Tensor:
+def scale_eeg(eeg: np.ndarray, scale_individually: bool=True) -> np.ndarray:
     ''' Scales the EEG prior to training/ predicting with the neural 
     network.
 
@@ -27,13 +27,11 @@ def scale_eeg(eeg: torch.Tensor, scale_individually: bool=True) -> torch.Tensor:
     eeg_out = deepcopy(eeg)
     
     if scale_individually:
-        for sample, eeg_sample in enumerate(eeg):
+        for sample, eeg_sample in enumerate(tqdm(eeg, desc="scaler")):
             # Common average ref:
             for time in range(eeg_sample.shape[-1]):
                 eeg_out[sample][:, time] -= np.mean(eeg_sample[:, time])
-                # eeg_out[sample][:, time] /= np.max(np.abs(eeg_sample[:, time]))
                 eeg_out[sample][:, time] /= eeg_out[sample][:, time].std()
-                
                 
     else:
         for sample, eeg_sample in enumerate(eeg):
@@ -82,7 +80,7 @@ def interpolate_eeg(x_scaled, im_shape, info):
     elec_pos = _find_topomap_coords(info, info.ch_names)
     interpolator = make_interpolator(elec_pos, res=im_shape[0])
     x_scaled_interp = deepcopy(x_scaled)
-    for i, sample in enumerate(x_scaled):
+    for i, sample in enumerate(tqdm(x_scaled, desc="interpolator")):
         list_of_time_slices = []
         for time_slice in sample:
             time_slice_interp = interpolator.set_values(time_slice)()[::-1]
@@ -92,4 +90,15 @@ def interpolate_eeg(x_scaled, im_shape, info):
         x_scaled_interp[i][np.isnan(x_scaled_interp[i])] = 0
     x_scaled = x_scaled_interp
     del x_scaled_interp
+    return x_scaled
+
+
+def interpolate_single_eeg(x_scaled, interpolator):
+    list_of_time_slices = []
+    for time_slice in x_scaled:
+        time_slice_interp = interpolator.set_values(time_slice)()[::-1]
+        time_slice_interp = time_slice_interp[np.newaxis, :, :]# (1, height, width)
+        list_of_time_slices.append(time_slice_interp)
+    x_scaled = np.stack(list_of_time_slices, axis=0)
+    x_scaled[np.isnan(x_scaled)] = 0
     return x_scaled

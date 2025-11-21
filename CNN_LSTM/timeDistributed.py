@@ -1,4 +1,5 @@
 from torch import nn
+
 class TimeDistributed(nn.Module):
 
     def __init__(self, module, batch_first=False):
