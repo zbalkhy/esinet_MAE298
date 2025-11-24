@@ -52,7 +52,7 @@ if __name__ == "__main__":
                 (dataset.__len__() - (test_amount + val_amount)), 
                 test_amount, 
                 val_amount
-    ])
+    ], generator=gen)
 
     B = 512  # batch size
     train_dataloader = torch.utils.data.DataLoader(

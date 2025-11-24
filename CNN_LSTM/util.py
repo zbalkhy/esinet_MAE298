@@ -7,7 +7,7 @@ from mne.viz.topomap import (_setup_interp, _make_head_outlines, _check_sphere,
     _check_extrapolate)
 
 def robust_minmax_scaler(eeg: np.ndarray) -> np.ndarray:
-    lower, upper = [torch.quantile(eeg, 25), torch.quantile(eeg, 75)]
+    lower, upper = [np.percentile(eeg, 25), np.percentile(eeg, 75)]
     return (eeg-lower) / (upper-lower)
 
 def scale_eeg(eeg: np.ndarray, scale_individually: bool=True) -> np.ndarray:
@@ -38,7 +38,7 @@ def scale_eeg(eeg: np.ndarray, scale_individually: bool=True) -> np.ndarray:
             eeg_out[sample] = robust_minmax_scaler(eeg_sample)
             # Common average ref:
             for time in range(eeg_sample.shape[-1]):
-                eeg_out[sample][:, time] -= torch.mean(eeg_sample[:, time])
+                eeg_out[sample][:, time] -= np.mean(eeg_sample[:, time])
     return eeg_out
 
 def scale_source(sources):
