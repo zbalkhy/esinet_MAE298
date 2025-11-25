@@ -16,29 +16,34 @@ class DipoleDataset(torch.utils.data.Dataset):
 
     # get sample
     def __getitem__(self, idx):
-
-        eeg_sample = np.load(os.path.join(self.eeg_data_path, self.eeg_str.format(idx))) # shape: (n_channels, n_timesteps)
-        interp_sample = np.load(os.path.join(self.interp_data, self.eeg_str.format(idx))) # shape: (n_timesteps, height, width)
+        interp_sample = torch.from_numpy(np.load(
+            os.path.join(self.interp_data, self.eeg_str.format(idx)))) # shape: (n_timesteps, height, width)
 
         if not self.get_whole_trial:
-            max_idx = np.unravel_index(np.argmax(eeg_sample), eeg_sample.shape)[1] # this is the timestep with the maximum eeg value, this will be used to train
+            eeg_sample = torch.from_numpy(np.load(os.path.join(self.eeg_data_path, self.eeg_str.format(idx)))) # shape: (n_channels, n_timesteps)
+            max_idx = torch.unravel_index(torch.argmax(eeg_sample), eeg_sample.shape)[1] # this is the timestep with the maximum eeg value, this will be used to train
             interp_sample = interp_sample[max_idx]
+            #interp_sample = interp_sample[:20]
+            #interp_sample = interp_sample[np.max((max_idx-10, 0)):np.min((interp_sample.shape[0]-1, max_idx+10))]
 
         # convert to tensor
-        interp_sample = torch.Tensor(interp_sample)
+        #interp_sample = torch.Tensor(interp_sample)
        
-        target = np.load(os.path.join(self.source_path, self.src_str.format(idx))) # shape: (n_dipoles, n_timesteps)
-        target = np.swapaxes(target,0,1)
+        target = torch.from_numpy(np.load(
+            os.path.join(self.source_path, self.src_str.format(idx)))) # shape: (n_dipoles, n_timesteps)
+        target = torch.swapaxes(target,0,1)
         
         if not self.get_whole_trial:
+            #target = target[:20]
+            #target = target[np.max((max_idx-10, 0)):np.min((target.shape[0]-1, max_idx+10))]
             target = target[max_idx] # take sources when eeg is maxed, then scale
         
         target = self.scale_source(target)
         
         # convert to tensor
-        target = torch.Tensor(target)
+        #target = torch.Tensor(target)
 
-        return interp_sample, target
+        return idx, interp_sample, target
     
     def scale_source(self, sources):
         ''' Scales the sources prior to training the neural network.
@@ -53,7 +58,7 @@ class DipoleDataset(torch.utils.data.Dataset):
         source : numpy.ndarray
             Scaled sources
         '''
-        sources /= np.max(np.abs(sources))
+        sources /= torch.max(torch.abs(sources))
         return sources
 
     def __len__(self):

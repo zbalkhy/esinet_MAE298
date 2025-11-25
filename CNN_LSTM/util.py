@@ -5,6 +5,9 @@ from tqdm import tqdm
 from mne.channels.layout import _find_topomap_coords
 from mne.viz.topomap import (_setup_interp, _make_head_outlines, _check_sphere, 
     _check_extrapolate)
+from scipy.optimize import minimize_scalar
+from scipy.stats import pearsonr
+
 
 def robust_minmax_scaler(eeg: np.ndarray) -> np.ndarray:
     lower, upper = [np.percentile(eeg, 25), np.percentile(eeg, 75)]
@@ -102,3 +105,74 @@ def interpolate_single_eeg(x_scaled, interpolator):
     x_scaled = np.stack(list_of_time_slices, axis=0)
     x_scaled[np.isnan(x_scaled)] = 0
     return x_scaled
+
+
+
+
+
+
+
+########## functions for brents method
+
+# this function operates on a single time sample
+def solve_p(y_est, x_true, leadfield):
+    '''
+    Parameters
+    ---------
+    y_est : numpy.ndarray
+        The estimated source vector.
+    x_true : numpy.ndarray
+        The original input EEG vector.
+    
+    Return
+    ------
+    y_scaled : numpy.ndarray
+        The scaled estimated source vector.
+    
+    '''
+    # Check if y_est is just zeros:
+    if np.max(y_est) == 0:
+        return y_est
+    y_est = np.squeeze(np.array(y_est))
+    x_true = np.squeeze(np.array(x_true))
+    # Get EEG from predicted source using leadfield
+    x_est = np.matmul(leadfield, y_est)
+
+    # optimize forward solution
+    tol = 1e-9
+    options = dict(maxiter=1000, disp=False)
+
+    # base scaling
+    rms_est = np.mean(np.abs(x_est))
+    rms_true = np.mean(np.abs(x_true))
+    base_scaler = rms_true / rms_est
+
+    
+    opt = minimize_scalar(correlation_criterion, args=(leadfield, y_est* base_scaler, x_true), bracket=(0,1), method='Brent', options=options, tol=tol)
+    
+    # opt = minimize_scalar(self.correlation_criterion, args=(self.leadfield, y_est* base_scaler, x_true), \
+    #     bounds=(0, 1), method='L-BFGS-B', options=options, tol=tol)
+
+    scaler = opt.x
+    y_scaled = y_est * scaler * base_scaler
+    return y_scaled
+
+def correlation_criterion(scaler, leadfield, y_est, x_true):
+    ''' Perform forward projections of a source using the leadfield.
+    This is the objective function which is minimized in Net::solve_p().
+    
+    Parameters
+    ----------
+    scaler : float
+        scales the source y_est
+    leadfield : numpy.ndarray
+        The leadfield (or sometimes called gain matrix).
+    y_est : numpy.ndarray
+        Estimated/predicted source.
+    x_true : numpy.ndarray
+        True, unscaled EEG.
+    '''
+
+    x_est = np.matmul(leadfield, y_est*scaler) 
+    error = np.abs(pearsonr(x_true-x_est, x_true)[0])
+    return error
