@@ -20,19 +20,23 @@ class ConvDipNet(nn.Module):
         self.conv1 = nn.Conv2d(self.in_channels, self.n_filters, 
                                self.kernel_size, stride = self.stride, padding='same')
         self.bn1 = nn.BatchNorm2d(self.n_filters)
+        self.conv2 = nn.Conv2d(self.n_filters, self.n_filters, 
+                               self.kernel_size, stride = self.stride, padding='same')
+        self.bn2 = nn.BatchNorm2d(self.n_filters)
         self.hidden_layer = nn.Linear(self.height*self.width*self.n_filters, self.fc_size)
-        self.bn2 = nn.BatchNorm1d(self.fc_size)
+        self.bn3 = nn.BatchNorm1d(self.fc_size)
         self.output_layer = nn.Linear(self.fc_size, self.output_size)
         if final_batch_norm:
-            self.bn3 = nn.BatchNorm1d(self.output_size)
+            self.bn4 = nn.BatchNorm1d(self.output_size)
 
     def forward(self, x):
         x = self.activation(self.bn1(self.conv1(x)))
+        x = self.activation(self.bn2(self.conv2(x)))
         x = flatten(x, 1) # flatten all dimensions except batch
-        x = self.activation(self.bn2(self.hidden_layer(x)))
+        x = self.activation(self.bn3(self.hidden_layer(x)))
 
         if self.final_batch_norm:
-            x = self.bn3(self.output_layer(x)) #self.activation(self.bn3(self.output_layer(x)))
+            x = self.bn4(self.output_layer(x)) #self.activation(self.bn3(self.output_layer(x)))
         else:
             x = self.output_layer(x) #self.activation(self.output_layer(x))
         return x

@@ -20,23 +20,28 @@ def weighted_MSE_loss(outputs, targets):
     error = (targets-outputs)**2
     return torch.mean(weights*error)
 
-def contrastive_loss_fn(output, target, all_targets):
-    positive_similarity = F.cosine_similarity(output, target, dim=0)
-    negative_similarity = F.cosine_similarity(output.unsqueeze(0), all_targets, dim=1)
-    loss = -positive_similarity + torch.log(torch.sum(torch.exp(negative_similarity))) 
-    if loss == torch.inf:
-        print("hello")
+def contrastive_loss_fn(output, target):
+    temp = 0.07
+
+    output_norm = F.normalize(output, p=2, dim=1)  # Shape: (512, 5124)
+    target_norm = F.normalize(target, p=2, dim=1)  # Shape: (512, 5214)
+
+    cosine_sim = output_norm @ target_norm.T
+    pos_sim = torch.diag(cosine_sim)
+    neg_sim = cosine_sim
+
+    loss = -(1/temp)*pos_sim + torch.log(torch.sum(torch.sum((1-neg_sim)*torch.exp((1/temp)*neg_sim), dim=1)))
     return loss
 
 
 ## define paths
-model_save_path = "/mnt/data/convdip/model/convdip_run3"
+model_save_path = "/mnt/data/convdip/model/convdip_run4"
 
-whd_loss_save_path = "/mnt/data/convdip/model/convdip_run3/convdip_whd_loss.npy"
-whd_val_loss_save_path = "/mnt/data/convdip/model/convdip_run3/convdip_whd_val_loss.npy"
+whd_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_whd_loss.npy"
+whd_val_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_whd_val_loss.npy"
 
-contrastive_loss_save_path = "/mnt/data/convdip/model/convdip_run3/convdip_contrastive_loss.npy"
-contrastive_val_loss_save_path = "/mnt/data/convdip/model/convdip_run3/convdip_contrastive_val_loss.npy"
+contrastive_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_contrastive_loss.npy"
+contrastive_val_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_contrastive_val_loss.npy"
 
 data_path = "/mnt/data/convdip/training_data/"
 eeg_data_path = os.path.join(data_path, "eeg_data")
@@ -130,8 +135,6 @@ if __name__ == "__main__":
 
         # train for epoch
         for j, data in enumerate(tqdm(train_dataloader)):
-            if j==136:
-                print("hello")
             idx, sample, target = data
             sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
             
@@ -147,8 +150,7 @@ if __name__ == "__main__":
             loss_contrastive = torch.zeros(idx.shape[0])
             for b in range(idx.shape[0]):
                 loss_whd[b] = whd.WHD_loss(torch.relu(outputs_whd[b,:]), idx[b].item())#criterion(outputs, target)
-                loss_contrastive[b] = contrastive_loss_fn(outputs_contrastive[b,:], target[b,:], target)
-            
+            loss_contrastive = contrastive_loss_fn(outputs_contrastive, target)
             loss_whd = torch.mean(loss_whd)
             loss_contrastive = torch.mean(loss_contrastive)
 
@@ -163,41 +165,42 @@ if __name__ == "__main__":
             running_loss_contrastive += loss_contrastive.item()
 
         # get validation loss
-        with torch.no_grad():
-            convnet_whd.eval()
-            convnet_contrastive.eval()
+        if epoch % 5 == 0:
+            with torch.no_grad():
+                convnet_whd.eval()
+                convnet_contrastive.eval()
 
-            running_val_loss_whd = 0
-            running_val_loss_contrastive = 0
-            for j, data in enumerate(val_dataloader):
-                idx, sample, target = data
-                sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
-                
-                outputs_whd = convnet_whd(sample)
-                outputs_contrastive = convnet_contrastive(sample)
+                running_val_loss_whd = 0
+                running_val_loss_contrastive = 0
+                for j, data in enumerate(val_dataloader):
+                    idx, sample, target = data
+                    sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
+                    
+                    outputs_whd = convnet_whd(sample)
+                    outputs_contrastive = convnet_contrastive(sample)
 
-                loss_whd = torch.zeros(idx.shape[0])
-                loss_contrastive = torch.zeros(idx.shape[0])
-                for b in range(idx.shape[0]):
-                    loss_whd[b] = whd.WHD_loss(torch.relu(outputs_whd[b,:]), idx[b].item())#criterion(outputs, target)
-                    loss_contrastive[b] = contrastive_loss_fn(outputs_contrastive[b,:], target[b,:], target)
-                
-                loss_whd = torch.mean(loss_whd)
-                loss_contrastive = torch.mean(loss_contrastive)
-                
-                running_val_loss_whd += loss_whd.item()
-                running_val_loss_contrastive += loss_contrastive.item()
+                    loss_whd = torch.zeros(idx.shape[0])
+                    loss_contrastive = torch.zeros(idx.shape[0])
+                    for b in range(idx.shape[0]):
+                        loss_whd[b] = whd.WHD_loss(torch.relu(outputs_whd[b,:]), idx[b].item())#criterion(outputs, target)
+                    
+                    loss_contrastive = contrastive_loss_fn(outputs_contrastive, target)
+                    loss_whd = torch.mean(loss_whd)
+                    loss_contrastive = torch.mean(loss_contrastive)
+                    
+                    running_val_loss_whd += loss_whd.item()
+                    running_val_loss_contrastive += loss_contrastive.item()
+                whd_val_loss_values.append(running_val_loss_whd)
+                contrastive_val_loss_values.append(running_val_loss_contrastive)
 
         print(f'[{epoch + 1}] train_loss: {running_loss_whd:.8e} val_loss: {running_val_loss_whd:.8e} time: {datetime.now()}')
         
         # append losses
         whd_loss_values.append(running_loss_whd)
         contrastive_loss_values.append(running_loss_contrastive)
-        whd_val_loss_values.append(running_val_loss_whd)
-        contrastive_val_loss_values.append(running_val_loss_contrastive)
-        
+
         # save every 50 epochs
-        if epoch % 50 == 0:
+        if epoch % 20 == 0:
             np.save(whd_loss_save_path, np.array(whd_loss_values))
             np.save(contrastive_loss_save_path, np.array(contrastive_loss_values))
             np.save(whd_val_loss_save_path, np.array(whd_val_loss_values))
