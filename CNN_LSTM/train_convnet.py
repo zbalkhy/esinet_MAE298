@@ -92,7 +92,7 @@ if __name__ == "__main__":
         # train for epoch
         for j, data in enumerate(train_dataloader):
             _, sample, target = data
-            sample, target = sample.to(device), target.to(device)
+            sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
             
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
             running_val_loss = 0
             for j, data in enumerate(val_dataloader):
                 _, sample, target = data
-                sample, target = sample.to(device), target.to(device)
+                sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
                 outputs = convnet(sample)
                 loss = weighted_MSE_loss(outputs, target)#criterion(outputs, target)
                 running_val_loss += loss.item()

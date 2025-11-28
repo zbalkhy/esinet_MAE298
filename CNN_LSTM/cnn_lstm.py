@@ -21,17 +21,15 @@ class CNNLSTM(nn.Module):
         self.num_lstm_layers= num_lstm_layers
         
         self.convdip = ConvDipNet(in_channels, im_shape, n_filters, kernel_size, 
-                                  activation, stride, fc1_size, self.fc2_size)
+                                  activation, stride, fc1_size, self.fc2_size, final_batch_norm=True)
         self.time_distributed_conv = TimeDistributed(self.convdip, batch_first=True)
-        self.time_distributed_linear = TimeDistributedLinear(
-            nn.Linear(self.fc2_size, self.fc3_size), 
-            batch_first=True)
+        self.time_distributed_linear = TimeDistributedLinear(self.fc2_size, self.fc3_size, 
+                                                             batch_first=True, batch_norm=True)
         self.lstm = nn.LSTM(self.fc3_size, self.hidden_features, 
                             self.num_lstm_layers, batch_first=True)
         self.layer_norm = nn.LayerNorm(self.hidden_features)
-        self.time_distributed_linear_2 = TimeDistributedLinear(
-            nn.Linear(self.hidden_features, self.out_size), 
-            batch_first=True)
+        self.time_distributed_linear_2 = TimeDistributedLinear(self.hidden_features, 
+                                                               self.out_size, batch_first=True)
     
     def forward(self, x, h0=None, c0=None):
         # initialize hidden and cell states

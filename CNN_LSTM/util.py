@@ -7,7 +7,8 @@ from mne.viz.topomap import (_setup_interp, _make_head_outlines, _check_sphere,
     _check_extrapolate)
 from scipy.optimize import minimize_scalar
 from scipy.stats import pearsonr
-
+import mne
+from joblib import delayed, Parallel
 
 def robust_minmax_scaler(eeg: np.ndarray) -> np.ndarray:
     lower, upper = [np.percentile(eeg, 25), np.percentile(eeg, 75)]
@@ -106,10 +107,27 @@ def interpolate_single_eeg(x_scaled, interpolator):
     x_scaled[np.isnan(x_scaled)] = 0
     return x_scaled
 
-
-
-
-
+def eeg_to_Epochs(data, pth_fwd, info=None, parallel=False):
+    # if np.all( np.array([d.shape[-1] for d in data]) == data[0].shape[-1]):
+    #     epochs = mne.EpochsArray(data, info, verbose=0)
+    #     # Rereference to common average if its not the case
+    #     if int(epochs.info['custom_ref_applied']) != 0:
+    #         epochs.set_eeg_reference('average', projection=True, verbose=0)
+    #     epochs = [epochs]
+    # else:
+    if parallel:
+        epochs = Parallel(n_jobs=-1, backend='loky')(delayed(mne.EpochsArray)(d[np.newaxis, :, :], info, verbose=0) for d in data)  
+        # if 'eeg' in set(epochs[0].get_channel_types()):
+        #     epochs = Parallel(n_jobs=-1, backend='loky')(delayed(epoch.set_eeg_reference)('average', projection=True, verbose=0) for epoch in epochs)
+    else:
+        epochs = [mne.EpochsArray(d[np.newaxis, :, :], info, verbose=0, baseline=(0, 0)) for d in data]
+    
+        if 'eeg' in set(epochs[0].get_channel_types()):
+            epochs = [epoch.set_eeg_reference('average', projection=True, verbose=0) for epoch in epochs]
+            
+    
+    
+    return epochs
 
 
 ########## functions for brents method
