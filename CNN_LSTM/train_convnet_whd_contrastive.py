@@ -35,13 +35,13 @@ def contrastive_loss_fn(output, target):
 
 
 ## define paths
-model_save_path = "/mnt/data/convdip/model/convdip_run4"
+model_save_path = "/mnt/data/convdip/model/convdip_run5"
 
-whd_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_whd_loss.npy"
-whd_val_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_whd_val_loss.npy"
+whd_loss_save_path = "/mnt/data/convdip/model/convdip_run5/convdip_whd_loss.npy"
+whd_val_loss_save_path = "/mnt/data/convdip/model/convdip_run5/convdip_whd_val_loss.npy"
 
-contrastive_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_contrastive_loss.npy"
-contrastive_val_loss_save_path = "/mnt/data/convdip/model/convdip_run4/convdip_contrastive_val_loss.npy"
+contrastive_loss_save_path = "/mnt/data/convdip/model/convdip_run5/convdip_contrastive_loss.npy"
+contrastive_val_loss_save_path = "/mnt/data/convdip/model/convdip_run5/convdip_contrastive_val_loss.npy"
 
 data_path = "/mnt/data/convdip/training_data/"
 eeg_data_path = os.path.join(data_path, "eeg_data")

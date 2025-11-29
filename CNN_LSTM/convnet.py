@@ -23,6 +23,7 @@ class ConvDipNet(nn.Module):
         self.conv2 = nn.Conv2d(self.n_filters, self.n_filters, 
                                self.kernel_size, stride = self.stride, padding='same')
         self.bn2 = nn.BatchNorm2d(self.n_filters)
+        self.dropout = nn.Dropout(0.3)
         self.hidden_layer = nn.Linear(self.height*self.width*self.n_filters, self.fc_size)
         self.bn3 = nn.BatchNorm1d(self.fc_size)
         self.output_layer = nn.Linear(self.fc_size, self.output_size)
@@ -32,6 +33,7 @@ class ConvDipNet(nn.Module):
     def forward(self, x):
         x = self.activation(self.bn1(self.conv1(x)))
         x = self.activation(self.bn2(self.conv2(x)))
+        x = self.dropout(x)
         x = flatten(x, 1) # flatten all dimensions except batch
         x = self.activation(self.bn3(self.hidden_layer(x)))
 
