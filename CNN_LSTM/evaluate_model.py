@@ -13,10 +13,10 @@ import json
 from util import solve_p
 from tqdm import tqdm
 
-model_dir = "/mnt/data/convdip/model/convdip_run4"
-model_weight_path_whd = os.path.join(model_dir, "convdip__whd20.pt")
-model_weight_path_ct_20 = os.path.join(model_dir, "convdip__contrastive20.pt")
-model_weight_path_ct_140 = os.path.join(model_dir, "convdip__contrastive140.pt")
+model_dir = "/mnt/data/convdip/model/convdip_run6"
+model_weight_path_whd = os.path.join(model_dir, "convdip_40.pt")
+# model_weight_path_ct_20 = os.path.join(model_dir, "convdip__contrastive20.pt")
+# model_weight_path_ct_140 = os.path.join(model_dir, "convdip__contrastive140.pt")
 
 model_save_path = "/mnt/data/convdip/model/"
 data_path = "/mnt/data/convdip/training_data/"
@@ -25,7 +25,7 @@ interp_data_path = os.path.join(data_path, "interp_data")
 source_data_path = os.path.join(data_path, "source_data")
 info_path = os.path.join(data_path, "info.fif")
 
-if __name__=="__main__":
+if __name__ == "__main__":
     ### create model
     # define hyperparameters
     in_channels = 1
@@ -34,25 +34,25 @@ if __name__=="__main__":
     kernel_size = (3,3)
 
     # create single input ConvDipNet 
-    convnet_whd: nn.Module  = ConvDipNet(in_channels, im_shape, n_filters, kernel_size)
-    convnet_ct20: nn.Module  = ConvDipNet(in_channels, im_shape, n_filters, kernel_size)
-    convnet_ct140: nn.Module  = ConvDipNet(in_channels, im_shape, n_filters, kernel_size)
+    convnet: nn.Module  = ConvDipNet(in_channels, im_shape, n_filters, kernel_size)
+    # convnet_ct20: nn.Module  = ConvDipNet(in_channels, im_shape, n_filters, kernel_size)
+    # convnet_ct140: nn.Module  = ConvDipNet(in_channels, im_shape, n_filters, kernel_size)
 
 
     # print model summary
-    summary(convnet_whd, input_size=(32, 1, im_shape[0], im_shape[1])) # (batch_size, n_timesteps, in_channels, height, width)
+    summary(convnet, input_size=(32, 1, im_shape[0], im_shape[1])) # (batch_size, n_timesteps, in_channels, height, width)
 
     ### load weights into model
-    convnet_whd.load_state_dict(torch.load(model_weight_path_whd, weights_only=True))
-    convnet_whd.eval()
+    convnet.load_state_dict(torch.load(model_weight_path_whd, weights_only=True))
+    convnet.eval()
 
-    convnet_ct20.load_state_dict(torch.load(model_weight_path_ct_20, weights_only=True))
-    convnet_ct20.eval()
+    # convnet_ct20.load_state_dict(torch.load(model_weight_path_ct_20, weights_only=True))
+    # convnet_ct20.eval()
 
-    convnet_ct140.load_state_dict(torch.load(model_weight_path_ct_140, weights_only=True))
-    convnet_ct140.eval()
+    # convnet_ct140.load_state_dict(torch.load(model_weight_path_ct_140, weights_only=True))
+    # convnet_ct140.eval()
 
-    nets = [convnet_whd, convnet_ct20, convnet_ct140]
+    nets = [convnet]#, convnet_ct20, convnet_ct140]
 
     ### load in dataset
     dataset = DipoleDataset(eeg_data_path, interp_data_path, source_data_path, info_path, im_shape=im_shape)
@@ -97,16 +97,16 @@ if __name__=="__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    metric_save_path_whd20 = os.path.join(model_dir, "evaluation_metrics_whd20.json")
-    metric_save_path_ct20 = os.path.join(model_dir, "evaluation_metrics_ct20.json")
-    metric_save_path_ct140 = os.path.join(model_dir, "evaluation_metrics_ct140.json")
+    metric_save_path = os.path.join(model_dir, "evaluation_metrics.json")
+    # metric_save_path_ct20 = os.path.join(model_dir, "evaluation_metrics_ct20.json")
+    # metric_save_path_ct140 = os.path.join(model_dir, "evaluation_metrics_ct140.json")
 
-    save_paths = [metric_save_path_whd20, metric_save_path_ct20, metric_save_path_ct140]
+    save_paths = [metric_save_path]#, metric_save_path_ct20, metric_save_path_ct140]
 
     for net in nets:
         net.to(device)
     with torch.no_grad():
-        metrics_per_sample_list = [{},{},{}]
+        metrics_per_sample_list = [{}]#,{},{}]
         i=0
         for idxs, batch, target in test_dataloader:
             i+=1
@@ -120,14 +120,14 @@ if __name__=="__main__":
                     data_idx = int(idxs[idx])
                     target_sample = np.array(target[idx])
 
-                    if j==0: # relu for whd
-                        output_sample = np.array(torch.relu(output[idx]))
-                    else:
-                        output_sample = np.array(output[idx])
+                    # if j==0: # relu for whd
+                    #     output_sample = np.array(torch.relu(output[idx]))
+                    # else:
+                    output_sample = np.array(output[idx])
                     
                     eeg = np.load(os.path.join(data_path, f"eeg_data/sample_{data_idx}.npy"))
                     max_idx = np.unravel_index(np.argmax(eeg), eeg.shape)[1] # this is the timestep with the maximum eeg value, this will be used to train
-                    output_sample = solve_p(output_sample, eeg[:,max_idx], leadfield)
+                    #output_sample = solve_p(output_sample, eeg[:,max_idx], leadfield)
 
                     
                     auc_close, auc_far = eval_auc(target_sample, output_sample, dipole_pos)

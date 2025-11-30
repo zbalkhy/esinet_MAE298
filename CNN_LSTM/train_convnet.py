@@ -17,9 +17,9 @@ def weighted_MSE_loss(outputs, targets):
     return torch.mean(weights*error)
 
 ## define paths
-model_save_path = "/mnt/data/convdip/model/convdip_run2"
-loss_save_path = "/mnt/data/convdip/model/convdip_run2/convdip_loss.npy"
-val_loss_save_path = "/mnt/data/convdip/model/convdip_run2/convdip_val_loss.npy"
+model_save_path = "/mnt/data/convdip/model/convdip_run7"
+loss_save_path = "/mnt/data/convdip/model/convdip_run7/convdip_loss.npy"
+val_loss_save_path = "/mnt/data/convdip/model/convdip_run7/convdip_val_loss.npy"
 data_path = "/mnt/data/convdip/training_data/"
 eeg_data_path = os.path.join(data_path, "eeg_data")
 interp_data_path = os.path.join(data_path, "interp_data")
@@ -84,13 +84,13 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     convnet.to(device)
-
+    criterion = nn.MSELoss()
     for epoch in range(500):  # loop over the dataset multiple times
         convnet.train()
         running_loss = 0.0
 
         # train for epoch
-        for j, data in enumerate(train_dataloader):
+        for j, data in enumerate(tqdm(train_dataloader)):
             _, sample, target = data
             sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
             
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
             # forward + backward + optimize
             outputs = convnet(sample)
-            loss = weighted_MSE_loss(outputs, target)#criterion(outputs, target)
+            loss = weighted_MSE_loss(outputs, target)
             loss.backward()
             optimizer.step()
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                 _, sample, target = data
                 sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
                 outputs = convnet(sample)
-                loss = weighted_MSE_loss(outputs, target)#criterion(outputs, target)
+                loss = weighted_MSE_loss(outputs, target)
                 running_val_loss += loss.item()
         
         print(f'[{epoch + 1}] train_loss: {running_loss:.8e} val_loss: {running_val_loss:.8e} time: {datetime.now()}')
@@ -124,7 +124,7 @@ if __name__ == "__main__":
         val_loss_values.append(running_val_loss)
 
         # save every 50 epochs
-        if epoch % 50 == 0:
+        if epoch % 20 == 0:
             np.save(loss_save_path, np.array(loss_values))
             np.save(val_loss_save_path, np.array(val_loss_values))
             torch.save(convnet.state_dict(), os.path.join(model_save_path,"convdip_{}.pt".format(epoch)))
