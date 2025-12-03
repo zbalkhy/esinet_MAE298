@@ -9,6 +9,7 @@ from CNN_LSTM.util import *
 from dipoleDataset import DipoleDataset
 import os
 from datetime import datetime
+from torch.nn import functional as F
 
 ## define loss function
 def weighted_MSE_loss(outputs, targets):
@@ -16,10 +17,23 @@ def weighted_MSE_loss(outputs, targets):
     error = (targets-outputs)**2
     return torch.mean(weights*error)
 
+def contrastive_loss_fn(output, target):
+    temp = 0.07
+
+    output_norm = F.normalize(output, p=2, dim=1)  # Shape: (512, 5124)
+    target_norm = F.normalize(target, p=2, dim=1)  # Shape: (512, 5214)
+
+    cosine_sim = output_norm @ target_norm.T
+    pos_sim = torch.diag(cosine_sim)
+    neg_sim = cosine_sim
+
+    loss = -(1/temp)*pos_sim + torch.log(torch.sum(torch.sum((1-neg_sim)*torch.exp((1/temp)*neg_sim), dim=1)))
+    return loss
+
 ## define paths
-model_save_path = "/mnt/data/convdip/model/convdip_run7"
-loss_save_path = "/mnt/data/convdip/model/convdip_run7/convdip_loss.npy"
-val_loss_save_path = "/mnt/data/convdip/model/convdip_run7/convdip_val_loss.npy"
+model_save_path = "/mnt/data/convdip/model/convdip_run8"
+loss_save_path = "/mnt/data/convdip/model/convdip_run8/convdip_loss.npy"
+val_loss_save_path = "/mnt/data/convdip/model/convdip_run8/convdip_val_loss.npy"
 data_path = "/mnt/data/convdip/training_data/"
 eeg_data_path = os.path.join(data_path, "eeg_data")
 interp_data_path = os.path.join(data_path, "interp_data")
@@ -99,7 +113,9 @@ if __name__ == "__main__":
 
             # forward + backward + optimize
             outputs = convnet(sample)
-            loss = weighted_MSE_loss(outputs, target)
+            ct_loss = contrastive_loss_fn(outputs, target)
+            ct_loss = torch.mean(ct_loss)
+            loss = 0.9*criterion(outputs, target) + 0.1*ct_loss
             loss.backward()
             optimizer.step()
 
@@ -107,15 +123,18 @@ if __name__ == "__main__":
             running_loss += loss.item()
 
         # get validation loss
-        with torch.no_grad():
-            convnet.eval()
-            running_val_loss = 0
-            for j, data in enumerate(val_dataloader):
-                _, sample, target = data
-                sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
-                outputs = convnet(sample)
-                loss = weighted_MSE_loss(outputs, target)
-                running_val_loss += loss.item()
+        if epoch % 3 == 0:
+            with torch.no_grad():
+                convnet.eval()
+                running_val_loss = 0
+                for j, data in enumerate(val_dataloader):
+                    _, sample, target = data
+                    sample, target = sample.to(device, dtype=torch.float), target.to(device, dtype=torch.float)
+                    outputs = convnet(sample)
+                    ct_loss = contrastive_loss_fn(outputs, target)
+                    ct_loss = torch.mean(ct_loss)
+                    loss = 0.9*criterion(outputs, target) + 0.1*ct_loss
+                    running_val_loss += loss.item()
         
         print(f'[{epoch + 1}] train_loss: {running_loss:.8e} val_loss: {running_val_loss:.8e} time: {datetime.now()}')
         

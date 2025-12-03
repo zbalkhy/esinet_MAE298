@@ -13,12 +13,11 @@ import json
 from util import solve_p
 from tqdm import tqdm
 
-model_dir = "/mnt/data/convdip/model/convdip_run6"
+model_dir = "/mnt/data/convdip/model/convdip_run8"
 model_weight_path_whd = os.path.join(model_dir, "convdip_40.pt")
 # model_weight_path_ct_20 = os.path.join(model_dir, "convdip__contrastive20.pt")
 # model_weight_path_ct_140 = os.path.join(model_dir, "convdip__contrastive140.pt")
 
-model_save_path = "/mnt/data/convdip/model/"
 data_path = "/mnt/data/convdip/training_data/"
 eeg_data_path = os.path.join(data_path, "eeg_data")
 interp_data_path = os.path.join(data_path, "interp_data")
@@ -116,7 +115,7 @@ if __name__ == "__main__":
                 output = net(batch)
                 output = output.cpu()
 
-                for idx in range(output.shape[0]):
+                for idx in tqdm(range(output.shape[0])):
                     data_idx = int(idxs[idx])
                     target_sample = np.array(target[idx])
 
